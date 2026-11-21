@@ -14,7 +14,14 @@ No account, no API keys, no internet. Your voice never leaves your computer.
 
 The text is typed at your cursor **and** stays on your clipboard, so you can paste it again.
 
-A small indicator at the bottom of the screen shows when Utter is listening or working. Everything else lives in the tray icon: Fast Mode, AI cleanup, and the indicator toggle.
+A small indicator at the bottom of the screen shows when Utter is listening or working. Everything else lives in the tray icon → **Settings**:
+
+- **Push-to-talk keys**: press any combo to record it, including modifier-only combos like Ctrl+Alt.
+- **Dictionary**: names and jargon Utter should listen for and always spell your way, plus replacements ("jira" → "Jira").
+- **Snippets**: say a trigger on its own ("my email") and Utter types the full text.
+- **App tones**: set any app (or a word in a window title, like "gmail") to Casual, Formal, Neutral or Code.
+- **History**: search past dictations, then copy, re-paste or delete them. They're stored only on your PC and deleted after 30 days.
+- Fast Mode, AI cleanup, idle indicator, and Start with Windows (on by default).
 
 ## What it does to your words
 
