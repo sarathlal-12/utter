@@ -45,7 +45,7 @@ On first launch Utter checks your RAM and CPU:
 
 You can switch at any time from the tray menu. **Fast Mode** uses the tiny model and rules-only cleanup, for near-instant results on old laptops.
 
-Memory use: about 30 MB for the app, 120 MB for speech, plus about 500 MB when AI cleanup is on.
+Memory use while idle is about 400 MB in total: the app, the Whisper speech engine (~120 MB), and the indicator window. The AI cleanup model (~500 MB) loads only while you dictate. It starts loading the moment you press the hotkey, so it's ready when you stop talking, and it's unloaded after 5 minutes without use. Idle CPU is near zero.
 
 ## Install
 

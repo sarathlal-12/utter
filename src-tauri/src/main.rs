@@ -43,7 +43,12 @@ pub struct Shared {
     /// Only one dictation is processed at a time, so pastes stay in order.
     work: Mutex<()>,
     tray: OnceLock<TrayItems>,
+    /// Last time the AI model was needed. It's unloaded after AI_IDLE without use.
+    ai_used: Mutex<Instant>,
 }
+
+/// Free the AI model's ~500 MB after this long without dictation.
+const AI_IDLE: Duration = Duration::from_secs(5 * 60);
 
 #[derive(Clone, Serialize)]
 struct PillState<'a> {
@@ -102,12 +107,38 @@ impl Shared {
                     me.pill("error", "Speech engine failed");
                 }
             }
-            if s.use_ai() {
-                if let Err(e) = me.engines.ensure_llama() {
-                    log!("llama failed: {e}");
-                }
-            } else {
+            // The AI model is not loaded here: it loads when you start talking (see prewarm_ai).
+            if !s.use_ai() {
                 me.engines.stop_llama();
+            }
+        });
+    }
+
+    /// Start loading the AI model while the user is still speaking, so it's ready by the time they stop.
+    fn prewarm_ai(self: &Arc<Self>) {
+        if !self.settings.lock().unwrap().use_ai() {
+            return;
+        }
+        *self.ai_used.lock().unwrap() = Instant::now();
+        let me = self.clone();
+        std::thread::spawn(move || {
+            if let Err(e) = me.engines.ensure_llama() {
+                log!("llama failed: {e}");
+            }
+        });
+    }
+
+    /// Unload the AI model after AI_IDLE without dictation.
+    fn start_idle_reaper(self: &Arc<Self>) {
+        let me = self.clone();
+        std::thread::spawn(move || loop {
+            std::thread::sleep(Duration::from_secs(30));
+            let idle = me.ai_used.lock().unwrap().elapsed();
+            // UTTER_AI_IDLE_SECS overrides the timeout (handy for testing).
+            let limit = std::env::var("UTTER_AI_IDLE_SECS").ok().and_then(|v| v.parse().ok()).map(Duration::from_secs).unwrap_or(AI_IDLE);
+            if idle > limit && me.engines.llama_ready().is_some() && me.work.try_lock().is_ok() {
+                me.engines.stop_llama();
+                log!("AI model unloaded after {} min idle", idle.as_secs() / 60);
             }
         });
     }
@@ -167,6 +198,11 @@ impl Shared {
             } else {
                 let mut text = cleanup::apply_dictionary(&cleanup::rules(&raw, tone), &s.words, &s.replacements);
                 if s.use_ai() && !text.is_empty() {
+                    // Usually already loaded by prewarm_ai; if not, this waits for it (about 1-2 s).
+                    *me.ai_used.lock().unwrap() = Instant::now();
+                    if let Err(e) = me.engines.ensure_llama() {
+                        log!("llama failed: {e}");
+                    }
                     if let Some(polished) = cleanup::ai_polish(&me.engines, &text, tone) {
                         text = cleanup::apply_dictionary(&polished, &s.words, &s.replacements);
                         used_ai = true;
@@ -215,6 +251,7 @@ fn controller(shared: Arc<Shared>, rx: mpsc::Receiver<HotkeyEvent>) {
                     Ok(r) => {
                         rec = Some((r, Instant::now(), ctx));
                         shared.pill("listening", "");
+                        shared.prewarm_ai();
                     }
                     Err(e) => {
                         log!("mic error: {e}");
@@ -332,6 +369,8 @@ fn open_settings(app: &AppHandle, tab: &str) {
     let url = WebviewUrl::App("settings.html".into());
     if let Err(e) = WebviewWindowBuilder::new(app, "settings", url)
         .initialization_script(&format!("window.__UTTER_TAB = {:?};", tab))
+        // Must match the pill window's args in tauri.conf.json (WebView2 shares one browser per app).
+        .additional_browser_args("--disable-gpu --disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection --renderer-process-limit=1")
         .title("Utter")
         .inner_size(760.0, 580.0)
         .min_inner_size(560.0, 420.0)
@@ -502,8 +541,15 @@ fn main() {
                 engines: Arc::new(Engines::new(res)),
                 work: Mutex::new(()),
                 tray: OnceLock::new(),
+                ai_used: Mutex::new(Instant::now()),
             });
             app.manage(shared.clone());
+            shared.start_idle_reaper();
+            // Debug builds: UTTER_TEST_PREWARM=1 loads the AI model as if a dictation started (tests load/unload).
+            #[cfg(debug_assertions)]
+            if std::env::var("UTTER_TEST_PREWARM").is_ok() {
+                shared.prewarm_ai();
+            }
 
             if let Some(pill) = app.get_webview_window("pill") {
                 place_pill(&pill);

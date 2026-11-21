@@ -51,7 +51,7 @@ impl Engines {
         #[cfg(windows)]
         {
             use std::os::windows::process::CommandExt;
-            cmd.creation_flags(0x0800_0000); // CREATE_NO_WINDOW
+            cmd.creation_flags(0x0000_0008); // DETACHED_PROCESS: no console, so no hidden conhost.exe either
         }
         let child = cmd.spawn().map_err(|e| format!("could not start {}: {e}", exe.display()))?;
         #[cfg(windows)]
