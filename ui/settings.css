@@ -5,9 +5,10 @@
   --fg: #1b1b1f;
   --muted: #6b6b76;
   --line: #e2e2e8;
-  --accent: #6d5dfc;
-  --accent-fg: #ffffff;
-  --accent-soft: #ecebff;
+  --accent: #f5a623;
+  --accent-fg: #16181c;
+  --accent-soft: #fdf0d9;
+  --accent-text: #9a5f00;
   --danger: #d64545;
   --kbd: #f0f0f4;
   color-scheme: light;
@@ -20,9 +21,10 @@
     --fg: #ececf1;
     --muted: #9a9aa6;
     --line: #2e2e36;
-    --accent: #8b7dff;
-    --accent-fg: #0f0f12;
-    --accent-soft: #2a2747;
+    --accent: #f5a623;
+    --accent-fg: #16181c;
+    --accent-soft: #3a2c12;
+    --accent-text: #ffc24d;
     --danger: #ff7a7a;
     --kbd: #2a2a32;
     color-scheme: dark;
@@ -60,7 +62,7 @@ nav button {
   cursor: pointer;
 }
 nav button:hover { background: var(--line); }
-nav button.active { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+nav button.active { background: var(--accent-soft); color: var(--accent-text); font-weight: 600; }
 .side-foot { margin-top: auto; padding: 8px; color: var(--muted); font-size: 12px; opacity: 0; transition: opacity 0.2s; }
 .side-foot.show { opacity: 1; }
 
