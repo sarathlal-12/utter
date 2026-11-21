@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Utter</title>
+  <link rel="stylesheet" href="settings.css" />
+</head>
+<body>
+  <aside class="side">
+    <div class="brand"><img src="logo.svg" alt="" width="26" height="26" /> Utter</div>
+    <nav id="tabs">
+      <button data-tab="welcome" hidden>Welcome</button>
+      <button data-tab="general">General</button>
+      <button data-tab="dictionary">Dictionary</button>
+      <button data-tab="snippets">Snippets</button>
+      <button data-tab="tones">App tones</button>
+      <button data-tab="history">History</button>
+    </nav>
+    <div class="side-foot" id="saved">Saved</div>
+  </aside>
+
+  <main>
+    <!-- Welcome (first launch) -->
+    <section id="tab-welcome" class="tab">
+      <h1>Welcome to Utter</h1>
+      <p class="lead">Dictate into any app, fully offline. Nothing you say leaves this computer.</p>
+      <ol class="steps">
+        <li>Click into any text box: email, chat, docs, code.</li>
+        <li>Hold <kbd class="hk">Ctrl+Win</kbd> and speak.</li>
+        <li>Let go. Clean text appears at your cursor and stays on your clipboard.</li>
+      </ol>
+      <p>For long dictation, press <kbd>Space</kbd> while holding the keys to go hands-free. Press the keys again to finish. <kbd>Esc</kbd> cancels.</p>
+      <div class="card" id="hw-card"></div>
+      <button class="primary" data-goto="general">Open settings</button>
+    </section>
+
+    <!-- General -->
+    <section id="tab-general" class="tab">
+      <h1>General</h1>
+      <div class="row">
+        <div>
+          <div class="label">Push-to-talk keys</div>
+          <div class="hint">Hold to talk. Add <kbd>Space</kbd> while holding for hands-free.</div>
+        </div>
+        <div class="hk-box">
+          <kbd id="hotkey" class="big"></kbd>
+          <button id="hk-change">Change</button>
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <div class="label">Fast Mode</div>
+          <div class="hint">Smallest speech model and no AI cleanup. Best for older or slower computers.</div>
+        </div>
+        <label class="switch"><input type="checkbox" id="fast_mode" /><span></span></label>
+      </div>
+      <div class="row">
+        <div>
+          <div class="label">AI cleanup</div>
+          <div class="hint">A small local model polishes grammar and tone. Uses about 500 MB of RAM.</div>
+        </div>
+        <label class="switch"><input type="checkbox" id="ai_cleanup" /><span></span></label>
+      </div>
+      <div class="row">
+        <div>
+          <div class="label">Show indicator when idle</div>
+          <div class="hint">The thin bar at the bottom of the screen.</div>
+        </div>
+        <label class="switch"><input type="checkbox" id="show_idle_pill" /><span></span></label>
+      </div>
+      <div class="row">
+        <div>
+          <div class="label">Start with Windows</div>
+          <div class="hint">Ready to dictate as soon as you sign in.</div>
+        </div>
+        <label class="switch"><input type="checkbox" id="autostart" /><span></span></label>
+      </div>
+      <p class="meta" id="meta"></p>
+    </section>
+
+    <!-- Dictionary -->
+    <section id="tab-dictionary" class="tab">
+      <h1>Dictionary</h1>
+      <h2>Words</h2>
+      <p class="hint">Names, brands and jargon. Utter listens for them and always spells them exactly like this.</p>
+      <form class="add" id="word-form">
+        <input id="word-input" placeholder="e.g. Kubernetes, Priya, SpotVault" autocomplete="off" />
+        <button class="primary">Add</button>
+      </form>
+      <div class="chips" id="words"></div>
+
+      <h2>Replacements</h2>
+      <p class="hint">Whenever Utter writes the first thing, it writes the second instead.</p>
+      <form class="add pair" id="rep-form">
+        <input id="rep-from" placeholder="When it writes…" autocomplete="off" />
+        <span class="arrow">→</span>
+        <input id="rep-to" placeholder="Write this" autocomplete="off" />
+        <button class="primary">Add</button>
+      </form>
+      <div class="list" id="reps"></div>
+    </section>
+
+    <!-- Snippets -->
+    <section id="tab-snippets" class="tab">
+      <h1>Snippets</h1>
+      <p class="hint">Say the trigger <b>on its own</b> (as the whole dictation) and Utter types the full text.</p>
+      <form class="add snip" id="snip-form">
+        <input id="snip-trigger" placeholder="Trigger, e.g. my email" autocomplete="off" />
+        <textarea id="snip-text" rows="3" placeholder="Text to type, e.g. name@example.com"></textarea>
+        <button class="primary">Add snippet</button>
+      </form>
+      <div class="list" id="snips"></div>
+    </section>
+
+    <!-- App tones -->
+    <section id="tab-tones" class="tab">
+      <h1>App tones</h1>
+      <p class="hint">Utter already knows common apps: casual for Slack, Discord and WhatsApp; formal for Outlook and Gmail; no changes in code editors and terminals. Add your own rules here. They win over the built-in ones.</p>
+      <form class="add pair" id="tone-form">
+        <input id="tone-app" list="recent-apps" placeholder="App (slack.exe) or a word in the window title (gmail)" autocomplete="off" />
+        <select id="tone-pick">
+          <option value="casual">Casual</option>
+          <option value="formal">Formal</option>
+          <option value="neutral">Neutral</option>
+          <option value="code">Code (no changes)</option>
+        </select>
+        <button class="primary">Add</button>
+      </form>
+      <datalist id="recent-apps"></datalist>
+      <div class="list" id="tones"></div>
+    </section>
+
+    <!-- History -->
+    <section id="tab-history" class="tab">
+      <h1>History</h1>
+      <div class="toolbar">
+        <input id="search" type="search" placeholder="Search your dictations" autocomplete="off" />
+        <label class="check"><input type="checkbox" id="show-raw" /> Show original</label>
+        <button id="clear" class="danger">Clear all</button>
+      </div>
+      <p class="hint">Stored only on this computer. Deleted automatically after 30 days.</p>
+      <div id="history"></div>
+    </section>
+  </main>
+
+  <div id="capture" class="overlay" hidden>
+    <div class="dialog">
+      <div class="label">Press your new push-to-talk keys</div>
+      <div class="hint">Hold them together, then let go. Modifier-only combos like Ctrl+Alt work. Esc cancels.</div>
+      <kbd id="capture-keys" class="big">…</kbd>
+    </div>
+  </div>
+
+  <script src="settings.js"></script>
+</body>
+</html>

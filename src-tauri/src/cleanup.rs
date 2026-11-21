@@ -317,6 +317,56 @@ fn finish_for_tone(mut t: String, tone: Tone) -> String {
     t
 }
 
+// ---------------------------------------------------------------- dictionary & snippets
+
+fn normalize(s: &str) -> String {
+    s.to_lowercase()
+        .chars()
+        .map(|c| if c.is_alphanumeric() || c == '\'' { c } else { ' ' })
+        .collect::<String>()
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+/// A snippet fires only when the whole dictation is its trigger ("my email" -> the address).
+pub fn snippet(raw: &str, snippets: &[crate::settings::Snippet]) -> Option<String> {
+    let said = normalize(raw);
+    if said.is_empty() {
+        return None;
+    }
+    snippets
+        .iter()
+        .find(|s| !s.trigger.trim().is_empty() && normalize(&s.trigger) == said)
+        .map(|s| s.text.clone())
+}
+
+fn word_regex(w: &str) -> Option<Regex> {
+    let w = w.trim();
+    if w.is_empty() {
+        return None;
+    }
+    Regex::new(&format!(r"(?i)(^|[^\w])({})($|[^\w])", regex::escape(w))).ok()
+}
+
+/// Your spellings win: replacements first, then dictionary words get their exact casing.
+pub fn apply_dictionary(text: &str, words: &[String], replacements: &[crate::settings::Replacement]) -> String {
+    let mut t = text.to_string();
+    for r in replacements {
+        if let Some(re) = word_regex(&r.from) {
+            let to = r.to.replace('$', "$$");
+            t = re.replace_all(&t, format!("${{1}}{to}${{3}}").as_str()).to_string();
+        }
+    }
+    for w in words {
+        if let Some(re) = word_regex(w) {
+            let to = w.trim().replace('$', "$$");
+            t = re.replace_all(&t, format!("${{1}}{to}${{3}}").as_str()).to_string();
+        }
+    }
+    t
+}
+
 // ---------------------------------------------------------------- AI polish
 
 fn tone_line(tone: Tone) -> &'static str {
@@ -426,6 +476,17 @@ mod tests {
         assert_eq!(r("hello there new line how are you"), "Hello there\nHow are you.");
         assert_eq!(r("[BLANK_AUDIO]"), "");
         assert_eq!(r("i think i'm ready"), "I think I'm ready.");
+    }
+
+    #[test]
+    fn dictionary_and_snippets() {
+        use crate::settings::{Replacement, Snippet};
+        let words = vec!["Jira".to_string(), "Sarath".to_string()];
+        let reps = vec![Replacement { from: "kubernetes".into(), to: "K8s".into() }];
+        assert_eq!(apply_dictionary("Open jira and ask sarath about kubernetes.", &words, &reps), "Open Jira and ask Sarath about K8s.");
+        let snips = vec![Snippet { trigger: "my email".into(), text: "me@example.com".into() }];
+        assert_eq!(snippet("My email.", &snips).as_deref(), Some("me@example.com"));
+        assert_eq!(snippet("send it to my email", &snips), None);
     }
 
     #[test]

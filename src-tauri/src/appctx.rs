@@ -14,7 +14,39 @@ pub struct AppCtx {
     pub title: String,
 }
 
+impl Tone {
+    pub fn parse(s: &str) -> Option<Tone> {
+        match s.to_lowercase().as_str() {
+            "casual" => Some(Tone::Casual),
+            "formal" => Some(Tone::Formal),
+            "neutral" => Some(Tone::Neutral),
+            "code" => Some(Tone::Code),
+            _ => None,
+        }
+    }
+}
+
 impl AppCtx {
+    /// Your rules first (program name or a word in the window title), then the built-in ones.
+    pub fn tone_with(&self, rules: &[crate::settings::AppTone]) -> Tone {
+        let exe = self.exe.to_lowercase();
+        let exe = exe.trim_end_matches(".exe");
+        let title = self.title.to_lowercase();
+        for r in rules {
+            let app = r.app.trim().to_lowercase();
+            let app = app.trim_end_matches(".exe");
+            if app.is_empty() {
+                continue;
+            }
+            if app == exe || title.contains(app) {
+                if let Some(t) = Tone::parse(&r.tone) {
+                    return t;
+                }
+            }
+        }
+        self.tone()
+    }
+
     pub fn tone(&self) -> Tone {
         let exe = self.exe.to_lowercase();
         let exe = exe.trim_end_matches(".exe");

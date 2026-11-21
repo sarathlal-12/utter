@@ -1,0 +1,176 @@
+:root {
+  --bg: #f6f6f8;
+  --panel: #ffffff;
+  --side: #efeff3;
+  --fg: #1b1b1f;
+  --muted: #6b6b76;
+  --line: #e2e2e8;
+  --accent: #6d5dfc;
+  --accent-fg: #ffffff;
+  --accent-soft: #ecebff;
+  --danger: #d64545;
+  --kbd: #f0f0f4;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #17171b;
+    --panel: #1f1f25;
+    --side: #141418;
+    --fg: #ececf1;
+    --muted: #9a9aa6;
+    --line: #2e2e36;
+    --accent: #8b7dff;
+    --accent-fg: #0f0f12;
+    --accent-soft: #2a2747;
+    --danger: #ff7a7a;
+    --kbd: #2a2a32;
+    color-scheme: dark;
+  }
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body {
+  display: flex;
+  background: var(--bg);
+  color: var(--fg);
+  font: 14px/1.45 "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+}
+
+.side {
+  width: 190px;
+  flex: none;
+  background: var(--side);
+  border-right: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  padding: 18px 10px;
+}
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 650; font-size: 16px; padding: 0 8px 18px; }
+nav { display: flex; flex-direction: column; gap: 2px; }
+nav button {
+  text-align: left;
+  background: none;
+  border: 0;
+  color: var(--fg);
+  padding: 8px 10px;
+  border-radius: 8px;
+  font: inherit;
+  cursor: pointer;
+}
+nav button:hover { background: var(--line); }
+nav button.active { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.side-foot { margin-top: auto; padding: 8px; color: var(--muted); font-size: 12px; opacity: 0; transition: opacity 0.2s; }
+.side-foot.show { opacity: 1; }
+
+main { flex: 1; overflow-y: auto; padding: 26px 32px 40px; }
+.tab { display: none; max-width: 640px; }
+.tab.active { display: block; }
+h1 { font-size: 22px; margin: 0 0 16px; font-weight: 650; }
+h2 { font-size: 15px; margin: 26px 0 4px; }
+.lead { font-size: 15px; color: var(--muted); margin-top: -6px; }
+.hint { color: var(--muted); font-size: 12.5px; margin: 2px 0 10px; }
+.label { font-weight: 600; }
+.meta { color: var(--muted); font-size: 12px; margin-top: 20px; }
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--line);
+}
+.row .hint { margin: 2px 0 0; }
+
+kbd {
+  display: inline-block;
+  background: var(--kbd);
+  border: 1px solid var(--line);
+  border-bottom-width: 2px;
+  border-radius: 6px;
+  padding: 1px 7px;
+  font: 600 12px/1.6 "Segoe UI", system-ui, sans-serif;
+}
+kbd.big { font-size: 15px; padding: 4px 12px; }
+.hk-box { display: flex; align-items: center; gap: 10px; flex: none; }
+
+button {
+  font: inherit;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--fg);
+  border-radius: 8px;
+  padding: 6px 12px;
+  cursor: pointer;
+}
+button:hover { border-color: var(--muted); }
+button.primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); font-weight: 600; }
+button.danger { color: var(--danger); }
+button.small { padding: 3px 9px; font-size: 12.5px; }
+
+input, textarea, select {
+  font: inherit;
+  color: var(--fg);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 7px 10px;
+  min-width: 0;
+}
+input:focus, textarea:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1px; border-color: transparent; }
+textarea { resize: vertical; width: 100%; }
+
+.add { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; }
+.add input { flex: 1; }
+.add.snip { flex-direction: column; align-items: stretch; }
+.add.snip button { align-self: flex-start; }
+.arrow { color: var(--muted); }
+
+.switch { position: relative; width: 40px; height: 22px; flex: none; }
+.switch input { opacity: 0; width: 0; height: 0; }
+.switch span {
+  position: absolute; inset: 0; border-radius: 22px; background: var(--line); cursor: pointer; transition: background 0.15s;
+}
+.switch span::before {
+  content: ""; position: absolute; left: 3px; top: 3px; width: 16px; height: 16px; border-radius: 50%;
+  background: #fff; transition: transform 0.15s; box-shadow: 0 1px 2px rgba(0,0,0,0.25);
+}
+.switch input:checked + span { background: var(--accent); }
+.switch input:checked + span::before { transform: translateX(18px); }
+.switch input:disabled + span { opacity: 0.45; cursor: default; }
+
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--accent-soft); color: var(--fg);
+  padding: 4px 6px 4px 10px; border-radius: 999px; font-size: 13px;
+}
+.chip button { border: 0; background: none; padding: 0 4px; color: var(--muted); font-size: 14px; line-height: 1; }
+
+.list { display: flex; flex-direction: column; gap: 6px; }
+.item {
+  display: flex; align-items: flex-start; gap: 10px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px;
+}
+.item .grow { flex: 1; min-width: 0; }
+.item .sub { color: var(--muted); font-size: 12px; }
+.item .text { white-space: pre-wrap; word-break: break-word; }
+.item .actions { display: flex; gap: 6px; flex: none; }
+.empty { color: var(--muted); padding: 18px 0; }
+
+.toolbar { display: flex; gap: 10px; align-items: center; }
+.toolbar input[type="search"] { flex: 1; }
+.check { display: flex; gap: 6px; align-items: center; color: var(--muted); font-size: 13px; white-space: nowrap; }
+.day { color: var(--muted); font-size: 12px; font-weight: 600; margin: 16px 0 6px; text-transform: uppercase; letter-spacing: 0.04em; }
+.raw { color: var(--muted); font-size: 12.5px; margin-top: 4px; font-style: italic; }
+
+.steps { padding-left: 20px; }
+.steps li { margin: 6px 0; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; margin: 16px 0; color: var(--muted); }
+
+.overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); display: flex; align-items: center; justify-content: center; }
+.overlay[hidden] { display: none; }
+.dialog { background: var(--panel); border-radius: 14px; padding: 24px 28px; max-width: 380px; text-align: center; box-shadow: 0 10px 40px rgba(0,0,0,0.3); }
+.dialog kbd { margin-top: 12px; }
