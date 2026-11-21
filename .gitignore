@@ -1,0 +1,7 @@
+node_modules/
+.downloads/
+src-tauri/target/
+src-tauri/gen/
+src-tauri/resources/bin/
+src-tauri/resources/models/
+*.log
