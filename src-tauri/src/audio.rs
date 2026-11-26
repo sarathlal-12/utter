@@ -14,7 +14,16 @@ pub struct Recording {
 pub fn start(on_level: impl Fn(f32) + Send + Sync + 'static) -> Result<Recording, String> {
     let host = cpal::default_host();
     let device = host.default_input_device().ok_or("No microphone found")?;
-    let config = device.default_input_config().map_err(|e| format!("Microphone unavailable: {e}"))?;
+    // Some drivers report no default format; fall back to the first one they support.
+    let config = match device.default_input_config() {
+        Ok(c) => c,
+        Err(e) => device
+            .supported_input_configs()
+            .ok()
+            .and_then(|mut it| it.next())
+            .map(|r| r.with_max_sample_rate())
+            .ok_or(format!("Microphone unavailable: {e}"))?,
+    };
     let rate = config.sample_rate().0;
     let channels = config.channels() as usize;
     let buf = Arc::new(Mutex::new(Vec::<f32>::with_capacity(rate as usize * 30)));
@@ -27,6 +36,10 @@ pub fn start(on_level: impl Fn(f32) + Send + Sync + 'static) -> Result<Recording
         cpal::SampleFormat::I16 => build::<i16>(&device, &cfg, channels, rate, buf.clone(), on_level),
         cpal::SampleFormat::U16 => build::<u16>(&device, &cfg, channels, rate, buf.clone(), on_level),
         cpal::SampleFormat::I32 => build::<i32>(&device, &cfg, channels, rate, buf.clone(), on_level),
+        cpal::SampleFormat::U32 => build::<u32>(&device, &cfg, channels, rate, buf.clone(), on_level),
+        cpal::SampleFormat::I8 => build::<i8>(&device, &cfg, channels, rate, buf.clone(), on_level),
+        cpal::SampleFormat::U8 => build::<u8>(&device, &cfg, channels, rate, buf.clone(), on_level),
+        cpal::SampleFormat::F64 => build::<f64>(&device, &cfg, channels, rate, buf.clone(), on_level),
         other => return Err(format!("Unsupported microphone format {other:?}")),
     }?;
     stream.play().map_err(|e| format!("Could not start microphone: {e}"))?;
@@ -80,33 +93,40 @@ impl Recording {
     }
 }
 
+/// Band-limited resampling (windowed-sinc low-pass). Works for any input rate.
+/// The old 3-sample average let high frequencies fold back into the speech band,
+/// which blurred consonants and cost a lot of Whisper accuracy.
 fn resample(input: &[f32], from: u32, to: u32) -> Vec<f32> {
-    if from == to || input.is_empty() {
+    if from == to || input.is_empty() || from == 0 {
         return input.to_vec();
     }
-    let ratio = from as f64 / to as f64;
-    let out_len = (input.len() as f64 / ratio) as usize;
-    if ratio > 1.0 {
-        // Downsample: average the source window (cheap low-pass).
-        (0..out_len)
-            .map(|i| {
-                let a = (i as f64 * ratio) as usize;
-                let b = (((i + 1) as f64 * ratio) as usize).min(input.len()).max(a + 1);
-                input[a..b].iter().sum::<f32>() / (b - a) as f32
-            })
-            .collect()
-    } else {
-        (0..out_len)
-            .map(|i| {
-                let p = i as f64 * ratio;
-                let a = p as usize;
-                let f = (p - a as f64) as f32;
-                let x0 = input[a.min(input.len() - 1)];
-                let x1 = input[(a + 1).min(input.len() - 1)];
-                x0 + (x1 - x0) * f
-            })
-            .collect()
+    let ratio = from as f64 / to as f64; // input samples per output sample
+    // Cut just below the lower Nyquist frequency.
+    let cutoff = 0.92 * (1.0f64).min(1.0 / ratio) * 0.5; // cycles per input sample
+    let half = (16.0 * ratio.max(1.0)).ceil() as i64; // taps on each side
+    let out_len = ((input.len() as f64) / ratio).floor() as usize;
+    let n = input.len() as i64;
+    let mut out = Vec::with_capacity(out_len);
+    for i in 0..out_len {
+        let t = i as f64 * ratio;
+        let c = t.floor() as i64;
+        let (mut acc, mut wsum) = (0f64, 0f64);
+        for k in (c - half + 1)..=(c + half) {
+            if k < 0 || k >= n {
+                continue;
+            }
+            let x = k as f64 - t;
+            let s = if x.abs() < 1e-9 { 1.0 } else { (std::f64::consts::TAU * cutoff * x).sin() / (std::f64::consts::PI * x) / (2.0 * cutoff) };
+            // Blackman window over [-half, half].
+            let u = (x / half as f64).clamp(-1.0, 1.0);
+            let w = 0.42 + 0.5 * (std::f64::consts::PI * u).cos() + 0.08 * (std::f64::consts::TAU * u).cos();
+            let h = s * w;
+            acc += input[k as usize] as f64 * h;
+            wsum += h;
+        }
+        out.push(if wsum.abs() > 1e-9 { (acc / wsum) as f32 } else { 0.0 });
     }
+    out
 }
 
 /// Loudest 40 ms window (RMS). Used to skip silent recordings, which make Whisper hallucinate.

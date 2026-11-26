@@ -45,7 +45,9 @@ On first launch Utter checks your RAM and CPU:
 
 You can switch at any time from the tray menu. **Fast Mode** uses the tiny model and rules-only cleanup, for near-instant results on old laptops.
 
-Memory use while idle is about 400 MB in total: the app, the Whisper speech engine (~120 MB), and the indicator window. The AI cleanup model (~500 MB) loads only while you dictate. It starts loading the moment you press the hotkey, so it's ready when you stop talking, and it's unloaded after 5 minutes without use. Idle CPU is near zero.
+Memory use while idle is about 150 MB in total: the app and the Whisper speech engine (~120 MB). The indicator is drawn natively, without a browser engine. The AI cleanup model (~500 MB) loads only while you dictate. It starts loading the moment you press the hotkey, so it's ready when you stop talking, and it's unloaded after 5 minutes without use. Idle CPU is near zero.
+
+Any microphone works: Utter converts whatever your mic records (any sample rate, mono or multi-channel) to the 16 kHz audio Whisper needs, with a proper low-pass filter so consonants stay clear.
 
 ## Install
 
@@ -85,7 +87,7 @@ Ctrl+Win (keyboard hook) → mic (cpal, 16 kHz) → whisper-server (local)
   → rules cleanup → optional llama-server polish (local) → clipboard + Ctrl+V
 ```
 
-- **Tauri 2 (Rust)**: small native shell, tray, and the indicator window.
+- **Tauri 2 (Rust)**: small native shell and tray. The indicator is a native layered window; the settings window opens only when you use it.
 - **whisper.cpp** and **llama.cpp** run as hidden local helper processes bound to `127.0.0.1`. Models stay loaded, so each dictation only pays for inference. They are closed automatically when Utter exits.
 
 ## Credits

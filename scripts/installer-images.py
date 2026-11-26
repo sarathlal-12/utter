@@ -6,8 +6,8 @@ from PIL import Image, ImageDraw, ImageFont
 
 ROOT = Path(__file__).resolve().parent.parent
 ICONS = ROOT / "src-tauri" / "icons"
-INK = (22, 24, 28)
-AMBER = (245, 166, 35)
+INK = (17, 17, 17)
+AMBER = (232, 69, 60)  # SpotVault red
 FONTS = Path("C:/Windows/Fonts")
 
 
@@ -27,13 +27,13 @@ side.paste(logo, ((164 - 84) // 2, 70), logo)
 d = ImageDraw.Draw(side)
 title = font("segoeuib.ttf", 26)
 sub = font("segoeui.ttf", 12)
-for text, f, y, color in [("Utter", title, 168, (255, 255, 255)), ("Talk. It types.", sub, 206, AMBER), ("Offline.", sub, 222, AMBER)]:
+for text, f, y, color in [("Utter", title, 168, (242, 239, 232)), ("Talk. It types.", sub, 206, AMBER), ("Offline.", sub, 222, AMBER)]:
     w = d.textlength(text, font=f)
     d.text(((164 - w) / 2, y), text, font=f, fill=color)
 side.save(ICONS / "installer-sidebar.bmp")
 
 # Header: 150x57, top-right of the inner pages.
-head = Image.new("RGB", (150, 57), (255, 255, 255))
+head = Image.new("RGB", (150, 57), (242, 239, 232))
 small = icon.resize((40, 40), Image.LANCZOS)
 head.paste(small, (150 - 40 - 10, 8), small)
 head.save(ICONS / "installer-header.bmp")

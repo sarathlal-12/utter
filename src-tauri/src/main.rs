@@ -7,6 +7,7 @@ mod cleanup;
 mod engines;
 mod hardware;
 mod history;
+mod pill;
 mod hotkey;
 mod log;
 mod paste;
@@ -16,7 +17,6 @@ use std::path::PathBuf;
 use std::sync::{mpsc, Arc, Mutex, OnceLock};
 use std::time::{Duration, Instant};
 
-use serde::Serialize;
 use tauri::menu::{CheckMenuItem, Menu, MenuItem, PredefinedMenuItem};
 use tauri::tray::TrayIconBuilder;
 use tauri::{AppHandle, Emitter, Manager, State, WebviewUrl, WebviewWindowBuilder, Wry};
@@ -50,13 +50,6 @@ pub struct Shared {
 /// Free the AI model's ~500 MB after this long without dictation.
 const AI_IDLE: Duration = Duration::from_secs(5 * 60);
 
-#[derive(Clone, Serialize)]
-struct PillState<'a> {
-    state: &'a str,
-    msg: String,
-    idle_visible: bool,
-}
-
 impl Shared {
     fn pill(&self, state: &str, msg: impl Into<String>) {
         let s = self.settings.lock().unwrap();
@@ -64,7 +57,7 @@ impl Shared {
         if state == "locked" && msg.is_empty() {
             msg = format!("Hands-free · {} to stop", s.hotkey);
         }
-        let _ = self.app.emit_to("pill", "pill", PillState { state, msg, idle_visible: s.show_idle_pill });
+        pill::set(state, &msg, s.show_idle_pill);
     }
 
     fn set_status(&self, text: &str) {
@@ -244,9 +237,8 @@ fn controller(shared: Arc<Shared>, rx: mpsc::Receiver<HotkeyEvent>) {
                     continue;
                 }
                 let ctx = appctx::foreground();
-                let app = shared.app.clone();
                 match audio::start(move |lvl| {
-                    let _ = app.emit_to("pill", "level", lvl);
+                    pill::level(lvl);
                 }) {
                     Ok(r) => {
                         rec = Some((r, Instant::now(), ctx));
@@ -394,35 +386,6 @@ fn set_autostart(app: &AppHandle, on: bool) {
     }
 }
 
-#[cfg(windows)]
-fn make_pill_passive(win: &tauri::WebviewWindow) {
-    use windows_sys::Win32::UI::WindowsAndMessaging::*;
-    if let Ok(hwnd) = win.hwnd() {
-        let hwnd = hwnd.0 as windows_sys::Win32::Foundation::HWND;
-        unsafe {
-            let ex = GetWindowLongPtrW(hwnd, GWL_EXSTYLE);
-            SetWindowLongPtrW(hwnd, GWL_EXSTYLE, ex | (WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW | WS_EX_TRANSPARENT) as isize);
-            ShowWindow(hwnd, SW_SHOWNOACTIVATE);
-            SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
-        }
-    }
-}
-
-fn place_pill(win: &tauri::WebviewWindow) {
-    let _ = win.set_ignore_cursor_events(true);
-    if let Ok(Some(mon)) = win.primary_monitor() {
-        let wa = mon.work_area();
-        let size = win.outer_size().unwrap_or(tauri::PhysicalSize::new(220, 60));
-        let x = wa.position.x + (wa.size.width as i32 - size.width as i32) / 2;
-        let y = wa.position.y + wa.size.height as i32 - size.height as i32 - (6.0 * mon.scale_factor()) as i32;
-        let _ = win.set_position(tauri::PhysicalPosition::new(x, y));
-    }
-    #[cfg(windows)]
-    make_pill_passive(win);
-    #[cfg(not(windows))]
-    let _ = win.show();
-}
-
 fn build_tray(app: &tauri::App, shared: Arc<Shared>) -> tauri::Result<()> {
     let s = shared.settings.lock().unwrap().clone();
     let status = MenuItem::with_id(app, "status", "Starting…", false, None::<&str>)?;
@@ -530,9 +493,8 @@ fn main() {
                 hotkey::parse("Ctrl+Win").unwrap()
             });
             log!("start: tier={} fast={} ai={} hotkey={}", settings.tier, settings.fast_mode, settings.ai_cleanup, settings.hotkey);
-            if first_run {
-                set_autostart(app.handle(), settings.autostart);
-            }
+            // Every launch, so the Run key always matches the setting and points at this exe.
+            set_autostart(app.handle(), settings.autostart);
             let shared = Arc::new(Shared {
                 app: app.handle().clone(),
                 history: History::load(app.path().app_data_dir()?),
@@ -551,8 +513,16 @@ fn main() {
                 shared.prewarm_ai();
             }
 
-            if let Some(pill) = app.get_webview_window("pill") {
-                place_pill(&pill);
+            pill::start(shared.settings.lock().unwrap().show_idle_pill);
+            // Debug builds: UTTER_TEST_PILL=<state> holds the indicator in that state (for screenshots).
+            #[cfg(debug_assertions)]
+            if let Ok(st) = std::env::var("UTTER_TEST_PILL") {
+                std::thread::spawn(move || loop {
+                    std::thread::sleep(Duration::from_millis(1500));
+                    let msg = match st.as_str() { "locked" => "Hands-free · Ctrl+Win to stop", "error" => "Didn't hear anything", "loading" => "Loading…", _ => "" };
+                    pill::set(&st, msg, true);
+                    for i in 0..60 { pill::level(0.02 + 0.03 * ((i as f32) * 0.7).sin().abs()); std::thread::sleep(Duration::from_millis(40)); }
+                });
             }
             build_tray(app, shared.clone())?;
             shared.warm_up();
